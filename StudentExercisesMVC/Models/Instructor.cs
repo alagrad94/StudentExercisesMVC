@@ -6,6 +6,15 @@ namespace StudentExercisesMVC.Models {
 
     public class Instructor {
 
+        public Instructor() {
+
+            Id = 0;
+            FirstName = null;
+            LastName = null;
+            SlackHandle = null;
+            CohortId = 0;
+            Cohort = new Cohort();
+        }
         public Instructor (int id, string firstName, string lastName, string slackHandle, int cohortId) {
       
           Id = id;

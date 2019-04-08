@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using StudentExercisesMVC.Models;
+using StudentExercisesMVC.Models.ViewModels;
 
 namespace StudentExercisesMVC.Controllers {
 
@@ -244,41 +245,43 @@ namespace StudentExercisesMVC.Controllers {
         }
         
         // GET: Students/Create
-        public ActionResult Create(Student student) {
+        public ActionResult Create() {
 
-            using (SqlConnection conn = Connection) {
-
-                conn.Open();
-                using (SqlCommand cmd = conn.CreateCommand()) {
-
-                    cmd.CommandText = $@"INSERT INTO Student (FirstName, LastName, SlackHandle, CohortId) 
-                                         OUTPUT INSERTED.Id
-                                         VALUES (@firstName, @lastName, @slackHandle, @cohortId);
-                                         SELECT MAX(Id) 
-                                           FROM Student";
-
-                    cmd.Parameters.Add(new SqlParameter("@firstName", student.FirstName));
-                    cmd.Parameters.Add(new SqlParameter("@lastName", student.LastName));
-                    cmd.Parameters.Add(new SqlParameter("@slackHandle", student.SlackHandle));
-                    cmd.Parameters.Add(new SqlParameter("@cohortId", student.CohortId));
-
-                    int newId = (int)cmd.ExecuteScalar();
-                    student.Id = newId;
-                    return CreatedAtRoute("GetExercise", new { id = newId }, student);
-                }
-            }
+            StudentCreateViewModel viewModel = 
+                new StudentCreateViewModel(_config.GetConnectionString("DefaultConnection"));
+            return View(viewModel);
         }
 
         // POST: Students/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection) {
-            try {
-                // TODO: Add insert logic here
+        public ActionResult Create(StudentCreateViewModel viewModel) {
 
-                return RedirectToAction(nameof(Index));
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"INSERT INTO Student (FirstName, LastName, SlackHandle, CohortId) 
+                                         OUTPUT INSERTED.Id
+                                         VALUES (@firstName, @lastName, @slackHandle, @cohortId);
+                                         SELECT MAX(Id) 
+                                           FROM Student";
+
+                        cmd.Parameters.Add(new SqlParameter("@firstName", viewModel.Student.FirstName));
+                        cmd.Parameters.Add(new SqlParameter("@lastName", viewModel.Student.LastName));
+                        cmd.Parameters.Add(new SqlParameter("@slackHandle", viewModel.Student.SlackHandle));
+                        cmd.Parameters.Add(new SqlParameter("@cohortId", viewModel.Student.CohortId));
+
+                        cmd.ExecuteNonQuery();
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
             }
             catch {
+
                 return View();
             }
         }

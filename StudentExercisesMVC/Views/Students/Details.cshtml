@@ -10,42 +10,52 @@
     <h4>Student</h4>
     <hr />
     <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Id)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Id)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FirstName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FirstName)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.LastName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.LastName)
-        </dd>
-        <dt class = "col-sm-2">
+        <dt class="col-sm-2">
             @Html.DisplayNameFor(model => model.FullName)
         </dt>
-        <dd class = "col-sm-10">
+        <dd class="col-sm-10">
             @Html.DisplayFor(model => model.FullName)
         </dd>
-        <dt class = "col-sm-2">
+        <dt class="col-sm-2">
             @Html.DisplayNameFor(model => model.SlackHandle)
         </dt>
-        <dd class = "col-sm-10">
+        <dd class="col-sm-10">
             @Html.DisplayFor(model => model.SlackHandle)
         </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CohortId)
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Cohort.CohortName)
         </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CohortId)
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Cohort.CohortName)
         </dd>
+        @if (Model.AssignedExercises.Count > 0) {
+            <h4>Assigned Exercises</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.AssignedExercises[0].ExerciseName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.AssignedExercises[0].ExerciseLanguage)
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exercise in Model.AssignedExercises) {
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(modelItem => exercise.ExerciseName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => exercise.ExerciseLanguage)
+                            </td>
+                            <td></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     </dl>
 </div>
 <div>
