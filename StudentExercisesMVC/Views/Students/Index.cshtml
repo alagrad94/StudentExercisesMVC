@@ -1,0 +1,75 @@
+﻿@model IEnumerable<StudentExercisesMVC.Models.Student>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.FullName)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SlackHandle)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Cohort.CohortName)
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model) {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.FullName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.SlackHandle)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Cohort.CohortName)
+                </td>
+                <td>
+                    @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
+                    @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
+                    @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
+                </td>
+            </tr>
+            @if (item.AssignedExercises.Count > 0) {
+            <td>
+                <thead>
+                <th>
+                    @Html.DisplayNameFor(model => item.AssignedExercises[0].ExerciseName)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => item.AssignedExercises[0].ExerciseLanguage)
+                </th>
+                <th>
+                </th>
+                </thead>
+                <tbody>
+                    @foreach (var exercise in item.AssignedExercises) {
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(modelItem => exercise.ExerciseName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => exercise.ExerciseLanguage)
+                            </td>
+                            <td>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </td>
+            }
+        }
+    </tbody>
+    </table>
+<hr />
