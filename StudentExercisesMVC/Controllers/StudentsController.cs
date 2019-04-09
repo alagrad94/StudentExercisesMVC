@@ -288,40 +288,309 @@ namespace StudentExercisesMVC.Controllers {
 
         // GET: Students/Edit/5
         public ActionResult Edit(int id) {
-            return View();
+
+            Student student = GetStudentById(id);
+
+            if (student == null) {
+                return NotFound();
+            }
+
+            StudentEditViewModel viewModel = new StudentEditViewModel {
+                Cohorts = GetAllCohorts(),
+                Student = student
+            };
+
+            return View(viewModel);
         }
 
         // POST: Students/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection) {
-            try {
-                // TODO: Add update logic here
+        public ActionResult Edit(int id, StudentEditViewModel viewModel) {
 
-                return RedirectToAction(nameof(Index));
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = @"UPDATE student 
+                                           SET firstname = @firstname, 
+                                               lastname = @lastname,
+                                               slackhandle = @slackhandle, 
+                                               cohortid = @cohortid
+                                         WHERE id = @id;";
+
+                        cmd.Parameters.Add(new SqlParameter("@firstname", viewModel.Student.FirstName));
+                        cmd.Parameters.Add(new SqlParameter("@lastname", viewModel.Student.LastName));
+                        cmd.Parameters.Add(new SqlParameter("@slackhandle", viewModel.Student.SlackHandle));
+                        cmd.Parameters.Add(new SqlParameter("@cohortid", viewModel.Student.CohortId));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        cmd.ExecuteNonQuery();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
             }
             catch {
-                return View();
+
+                viewModel.Cohorts = GetAllCohorts();
+                return View(viewModel);
             }
         }
 
         // GET: Students/Delete/5
         public ActionResult Delete(int id) {
-            return View();
+
+            Student student = GetStudentById(id);
+
+            if (student == null) {
+                return NotFound();
+            }
+
+            return View(student);
         }
 
         // POST: Students/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection) {
-            try {
-                
-                // TODO: Add delete logic here
+        public ActionResult Delete(int id, Student student) {
 
-                return RedirectToAction(nameof(Index));
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"DELETE FROM Student 
+                                              WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0) {
+
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        throw new Exception("No rows affected");
+                    }
+                }
+            } catch (Exception) {
+
+                if (!StudentExists(id)) {
+
+                    return NotFound();
+                }
+
+                throw;
             }
-            catch {
-                return View();
+        }
+
+        // GET: /Students/AssignExercises/1
+        public ActionResult AssignExercises(int id) {
+
+            Student student = GetStudentById(id);
+
+            if (student == null) {
+                return NotFound();
+            }
+
+            StudentAssignExercisesViewModel viewModel = new StudentAssignExercisesViewModel {
+                Student = student,
+                ExercisesNotAssignedToStudent = GetUnassignedExercises(student.Id),
+                AssignedExercises = GetAssignedExercises(student.Id),
+                UnassignedExercises = null
+            };
+
+            return View(viewModel);
+        }
+
+        // POST: Students/AssignExercises/1
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AssignExercises(int id, StudentAssignExercisesViewModel viewModel) {
+
+            try {
+
+                foreach (var item in viewModel.UnassignedExercises) {
+
+                    int exerciseId = int.Parse(item);
+
+                    using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                            cmd.CommandText = $@"INSERT INTO AssignedExercise(StudentId, ExerciseId)
+                                                      OUTPUT INSERTED.Id
+                                                      VALUES(@studentId, @exerciseId);
+                                                      SELECT MAX(Id)
+                                                        FROM AssignedExercise;";
+
+                            cmd.Parameters.Add(new SqlParameter("@studentId", id));
+                            cmd.Parameters.Add(new SqlParameter("@exerciseId", exerciseId));
+
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+                 return RedirectToAction(nameof(Index));
+
+            } catch {
+
+                return View(viewModel);
+            }
+        }
+
+        private bool StudentExists(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = $@"SELECT Id, FirstName, LastName, SlackHandle, CohortId 
+                                           FROM Student 
+                                          WHERE Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
+                }
+            }
+        }
+
+        private Student GetStudentById(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT s.Id AS StudentId,
+                                               s.FirstName, s.LastName, 
+                                               s.SlackHandle, s.CohortId,
+                                               c.CohortName AS CohortName
+                                          FROM Student s LEFT JOIN Cohort c on s.cohortid = c.id
+                                         WHERE  s.Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    Student student = null;
+
+                    if (reader.Read()) {
+                        student = new Student {
+                            Id = reader.GetInt32(reader.GetOrdinal("StudentId")),
+                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                            SlackHandle = reader.GetString(reader.GetOrdinal("SlackHandle")),
+                            CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                            Cohort = new Cohort {
+                                Id = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                CohortName = reader.GetString(reader.GetOrdinal("CohortName")),
+                            }
+                        };
+                    }
+                    reader.Close();
+                    return student;
+                }
+            }
+        }
+
+        private List<Cohort> GetAllCohorts() {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT id, cohortname from Cohort;";
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Cohort> cohorts = new List<Cohort>();
+
+                    while (reader.Read()) {
+                        cohorts.Add(new Cohort {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            CohortName = reader.GetString(reader.GetOrdinal("cohortname"))
+                        });
+                    }
+                    reader.Close();
+                    return cohorts;
+                }
+            }
+        }
+
+        private List<Exercise> GetUnassignedExercises(int studentId) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT e.Id AS ExerciseId, e.ExerciseName, e.ExerciseLanguage
+                                          FROM Exercise e
+                                     LEFT JOIN (SELECT e.Id AS ExerciseId, e.ExerciseName, 
+                                                       e.ExerciseLanguage, s.Id AS StudentID
+                                                  FROM AssignedExercise ae
+                                                  JOIN Exercise e ON e.Id = ae.ExerciseId
+                                                  JOIN Student s ON s.Id = ae.StudentId
+                                                 WHERE s.Id = @studentId) ae ON ae.ExerciseId = e.Id
+                                        WHERE ae.ExerciseId IS NULL;";
+
+                    cmd.Parameters.Add(new SqlParameter("@studentId", studentId));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Exercise> exercises = new List<Exercise>();
+
+                    while (reader.Read()) {
+                        exercises.Add(new Exercise {
+                            Id = reader.GetInt32(reader.GetOrdinal("ExerciseId")),
+                            ExerciseName = reader.GetString(reader.GetOrdinal("ExerciseName")),
+                            ExerciseLanguage = reader.GetString(reader.GetOrdinal("ExerciseLanguage"))
+                        });
+                    }
+                    reader.Close();
+                    return exercises;
+                }
+            }
+        }
+
+        private List<Exercise> GetAssignedExercises(int studentId) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT e.Id AS ExerciseId, e.ExerciseName, e.ExerciseLanguage
+                                          FROM AssignedExercise ae
+                                          JOIN Exercise e ON e.Id = ae.ExerciseId
+                                          JOIN Student s ON s.Id = ae.StudentId
+                                         WHERE s.Id = @studentId;";
+
+                    cmd.Parameters.Add(new SqlParameter("@studentId", studentId));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Exercise> exercises = new List<Exercise>();
+
+                    while (reader.Read()) {
+                        exercises.Add(new Exercise {
+                            Id = reader.GetInt32(reader.GetOrdinal("ExerciseId")),
+                            ExerciseName = reader.GetString(reader.GetOrdinal("ExerciseName")),
+                            ExerciseLanguage = reader.GetString(reader.GetOrdinal("ExerciseLanguage"))
+                        });
+                    }
+                    reader.Close();
+                    return exercises;
+                }
             }
         }
     }

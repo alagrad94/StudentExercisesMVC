@@ -118,77 +118,273 @@ namespace StudentExercisesMVC.Controllers {
         }
 
         // GET: Exercises/Details/5
-        public ActionResult Details(int id)
-        {
-            return View();
+        public ActionResult Details(int id, string include = "") {
+
+            if (include != "students") {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"SELECT id, ExerciseName, ExerciseLanguage 
+                                           FROM Exercise 
+                                          WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+                        SqlDataReader reader = cmd.ExecuteReader();
+
+                        Exercise exercise = null;
+
+                        while (reader.Read()) {
+
+                            exercise = new Exercise(reader.GetInt32(reader.GetOrdinal("id")),
+                                reader.GetString(reader.GetOrdinal("ExerciseName")),
+                                reader.GetString(reader.GetOrdinal("ExerciseLanguage")));
+                        }
+
+                        reader.Close();
+                        return View(exercise);
+                    }
+                }
+            } else {
+
+                Exercise exercise = null;
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"SELECT id, ExerciseName, ExerciseLanguage 
+                                               FROM Exercise 
+                                              WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        SqlDataReader reader = cmd.ExecuteReader();
+
+
+                        while (reader.Read()) {
+
+                            exercise = new Exercise(reader.GetInt32(reader.GetOrdinal("id")),
+                                reader.GetString(reader.GetOrdinal("ExerciseName")),
+                                reader.GetString(reader.GetOrdinal("ExerciseLanguage")));
+                        }
+
+                        reader.Close();
+
+                        cmd.CommandText = $@"SELECT s.id, s.FirstName, s.LastName, s.SlackHandle, s.CohortId
+                                               FROM AssignedExercise ae 
+                                               JOIN Student s ON ae.StudentId = s.id
+                                              WHERE ae.ExerciseId = {exercise.Id}";
+
+                        SqlDataReader reader2 = cmd.ExecuteReader();
+
+                        while (reader2.Read()) {
+
+                            Student student = new Student(reader2.GetInt32(reader2.GetOrdinal("id")),
+                             reader2.GetString(reader2.GetOrdinal("FirstName")),
+                             reader2.GetString(reader2.GetOrdinal("LastName")),
+                             reader2.GetString(reader2.GetOrdinal("SlackHandle")),
+                             reader2.GetInt32(reader2.GetOrdinal("CohortId")));
+
+                            exercise.ExerciseStudents.Add(student);
+                        }
+
+                        reader2.Close();
+                        return View(exercise);
+                    }
+                }
+            }
         }
 
         // GET: Exercises/Create
-        public ActionResult Create()
-        {
-            return View();
+        public ActionResult Create() {
+
+            Exercise exercise = new Exercise();
+            return View(exercise);
         }
 
         // POST: Exercises/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add insert logic here
+        public ActionResult Create(Exercise exercise) {
 
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
+            try {
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"INSERT INTO Exercise (ExerciseName, ExerciseLanguage)
+                                         OUTPUT INSERTED.Id
+                                         VALUES (@exerciseName, @exerciseLanguage)
+                                         SELECT MAX(Id) 
+                                           FROM Exercise";
+
+                        cmd.Parameters.Add(new SqlParameter("@exerciseName", exercise.ExerciseName));
+                        cmd.Parameters.Add(new SqlParameter("@exerciseLanguage", exercise.ExerciseLanguage));
+
+                        cmd.ExecuteNonQuery();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+            } catch {
+
                 return View();
             }
         }
 
         // GET: Exercises/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
+        public ActionResult Edit(int id) {
+
+            Exercise exercise = GetExerciseById(id);
+
+            if (exercise == null) {
+                return NotFound();
+            }
+
+            return View(exercise);
         }
 
         // POST: Exercises/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add update logic here
+        public ActionResult Edit(int id, Exercise exercise) {
 
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"UPDATE Exercise
+                                                SET ExerciseName = @exerciseName, ExerciseLanguage = @exerciseLanguage
+                                              WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@exerciseName", exercise.ExerciseName));
+                        cmd.Parameters.Add(new SqlParameter("@exerciseLanguage", exercise.ExerciseLanguage));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0) {
+
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        throw new Exception("No rows affected");
+                    }
+                }
+            } catch (Exception) {
+
+                if (!ExerciseExists(id)) {
+
+                    return NotFound();
+                }
+
+                throw;
             }
         }
 
         // GET: Exercises/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
+        public ActionResult Delete(int id) {
+
+            Exercise exercise = GetExerciseById(id);
+
+            if (exercise == null) {
+                return NotFound();
+            }
+
+            return View(exercise);
         }
 
         // POST: Exercises/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add delete logic here
+        public ActionResult Delete(int id, Exercise exercise) {
 
-                return RedirectToAction(nameof(Index));
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"DELETE FROM Exercise 
+                                                   WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0) {
+
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        throw new Exception("No rows affected");
+                    }
+                }
+            } catch (Exception) {
+
+                if (!ExerciseExists(id)) {
+
+                    return NotFound();
+                }
+
+                throw;
             }
-            catch
-            {
-                return View();
+        }
+
+        private Exercise GetExerciseById(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT Id, ExerciseName, ExerciseLanguage
+                                          FROM Exercise
+                                         WHERE  Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    Exercise exercise = null;
+
+                    if (reader.Read()) {
+                        exercise = new Exercise {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            ExerciseName = reader.GetString(reader.GetOrdinal("ExerciseName")),
+                            ExerciseLanguage = reader.GetString(reader.GetOrdinal("ExerciseLanguage"))
+                        };
+                    }
+                    reader.Close();
+                    return exercise;
+                }
+            }
+        }
+
+        private bool ExerciseExists(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = $@"SELECT Id, ExerciseName, ExerciseLanguage 
+                                           FROM Exercise 
+                                          WHERE Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
+                }
             }
         }
     }

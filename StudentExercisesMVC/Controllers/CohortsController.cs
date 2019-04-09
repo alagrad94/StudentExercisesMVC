@@ -183,71 +183,188 @@ namespace StudentExercisesMVC.Controllers {
         }
 
         // GET: Cohorts/Create
-        public ActionResult Create()
-        {
-            return View();
+        public ActionResult Create() {
+
+            Cohort cohort = new Cohort();
+            return View(cohort);
         }
 
         // POST: Cohorts/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add insert logic here
+        public ActionResult Create(Cohort cohort) {
 
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
+            try {
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"INSERT INTO Cohort (CohortName)
+                                                  OUTPUT INSERTED.Id
+                                                  VALUES (@cohortName) 
+                                                  SELECT MAX(Id) 
+                                                    FROM Cohort";
+
+                        cmd.Parameters.Add(new SqlParameter("@cohortName", cohort.CohortName));
+
+                        cmd.ExecuteNonQuery();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+            } catch {
+
                 return View();
             }
         }
 
         // GET: Cohorts/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
+        public ActionResult Edit(int id) {
+
+            Cohort cohort = GetCohortById(id);
+
+            if (cohort == null) {
+                return NotFound();
+            }
+
+            return View(cohort);
         }
 
         // POST: Cohorts/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add update logic here
+        public ActionResult Edit(int id, Cohort cohort) {
 
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = @"UPDATE Cohort
+                                               SET CohortName = @cohortName
+                                             WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@cohortName", cohort.CohortName));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0) {
+
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        throw new Exception("No rows affected");
+                    }
+                }
+            } catch (Exception) {
+
+                if (!CohortExists(id)) {
+
+                    return NotFound();
+                }
+
+                throw;
             }
         }
 
         // GET: Cohorts/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
+        public ActionResult Delete(int id) {
+
+            Cohort cohort = GetCohortById(id);
+
+            if (cohort == null) {
+                return NotFound();
+            }
+
+            return View(cohort);
         }
 
         // POST: Cohorts/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add delete logic here
+        public ActionResult Delete(int id, Cohort cohort) {
 
-                return RedirectToAction(nameof(Index));
+            try {
+
+                using (SqlConnection conn = Connection) {
+
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand()) {
+
+                        cmd.CommandText = $@"DELETE FROM Cohort 
+                                                   WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0) {
+
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        throw new Exception("No rows affected");
+                    }
+                }
+            } catch (Exception) {
+
+                if (!CohortExists(id)) {
+
+                    return NotFound();
+                }
+
+                throw;
             }
-            catch
-            {
-                return View();
+        }
+
+        private Cohort GetCohortById(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = @"SELECT Id, CohortName
+                                          FROM Cohort
+                                         WHERE  Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    Cohort cohort = null;
+
+                    if (reader.Read()) {
+                        cohort = new Cohort {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            CohortName = reader.GetString(reader.GetOrdinal("CohortName"))
+                        };
+                    }
+                    reader.Close();
+                    return cohort;
+                }
+            }
+        }
+
+        private bool CohortExists(int id) {
+
+            using (SqlConnection conn = Connection) {
+
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand()) {
+
+                    cmd.CommandText = $@"SELECT Id, CohortName 
+                                           FROM Cohort 
+                                          WHERE Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
+                }
             }
         }
     }

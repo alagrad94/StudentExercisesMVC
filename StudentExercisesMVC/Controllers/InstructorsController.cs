@@ -139,8 +139,7 @@ namespace StudentExercisesMVC.Controllers {
                         return RedirectToAction(nameof(Index));
                     }
                 }
-            }
-            catch {
+            } catch {
 
                 viewModel.Cohorts = GetAllCohorts();
                 return View(viewModel);
@@ -217,6 +216,7 @@ namespace StudentExercisesMVC.Controllers {
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id, Instructor instructor) {
+
             try {
 
                 using (SqlConnection conn = Connection) {
@@ -244,7 +244,6 @@ namespace StudentExercisesMVC.Controllers {
                 if (!InstructorExists(id)) {
 
                     return NotFound();
-
                 }
 
                 throw;
@@ -305,7 +304,6 @@ namespace StudentExercisesMVC.Controllers {
                     return instructor;
                 }
             }
-
         }
 
         private List<Cohort> GetAllCohorts() {
@@ -330,7 +328,6 @@ namespace StudentExercisesMVC.Controllers {
                     return cohorts;
                 }
             }
-
         }
     }
 }
